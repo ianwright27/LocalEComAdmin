@@ -1,16 +1,24 @@
 {
-  "name": "wright-commerce-admin",
-  "version": "0.1.0",
+  "name": "wrightcommerce-admin",
+  "version": "1.0.0",
+  "description": "WrightCommerce Admin Dashboard - E-commerce Management System",
   "private": true,
   "dependencies": {
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^13.5.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "axios": "^1.6.2",
+    "react-hook-form": "^7.49.2",
+    "react-toastify": "^9.1.3",
+    "react-icons": "^4.12.0",
+    "recharts": "^2.10.3",
+    "date-fns": "^3.0.6"
+  },
+  "devDependencies": {
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "tailwindcss": "^3.3.6",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -20,8 +28,7 @@
   },
   "eslintConfig": {
     "extends": [
-      "react-app",
-      "react-app/jest"
+      "react-app"
     ]
   },
   "browserslist": {
