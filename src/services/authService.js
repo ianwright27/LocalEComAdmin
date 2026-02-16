@@ -8,9 +8,7 @@ import api from './api';
 const authService = {
   /**
    * Login user
-   * @param {string} email 
-   * @param {string} password 
-   * @returns {Promise<Object>} User data
+   * POST /auth/login
    */
   async login(email, password) {
     try {
@@ -25,6 +23,7 @@ const authService = {
         return user;
       }
       
+      console.log(response.data);
       throw new Error(response.data.message || 'Login failed');
     } catch (error) {
       throw error.response?.data?.message || error.message || 'Login failed';
@@ -33,8 +32,7 @@ const authService = {
 
   /**
    * Register new user
-   * @param {Object} userData 
-   * @returns {Promise<Object>} User data
+   * POST /auth/register
    */
   async register(userData) {
     try {
@@ -57,6 +55,7 @@ const authService = {
 
   /**
    * Logout user
+   * POST /auth/logout
    */
   async logout() {
     try {
@@ -72,7 +71,6 @@ const authService = {
 
   /**
    * Get current user from localStorage
-   * @returns {Object|null} User data
    */
   getCurrentUser() {
     const userStr = localStorage.getItem('user');
@@ -88,7 +86,6 @@ const authService = {
 
   /**
    * Check if user is authenticated
-   * @returns {boolean}
    */
   isAuthenticated() {
     return this.getCurrentUser() !== null;
@@ -96,7 +93,7 @@ const authService = {
 
   /**
    * Get user profile
-   * @returns {Promise<Object>} User profile
+   * GET /auth/me
    */
   async getProfile() {
     try {
@@ -116,8 +113,7 @@ const authService = {
 
   /**
    * Update user profile
-   * @param {Object} data 
-   * @returns {Promise<Object>} Updated user
+   * PUT /auth/profile
    */
   async updateProfile(data) {
     try {
@@ -137,9 +133,7 @@ const authService = {
 
   /**
    * Change password
-   * @param {string} currentPassword 
-   * @param {string} newPassword 
-   * @returns {Promise<void>}
+   * POST /auth/change-password
    */
   async changePassword(currentPassword, newPassword) {
     try {

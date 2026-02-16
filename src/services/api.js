@@ -5,7 +5,8 @@
 
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost/wrightcommerce/public/api/v1';
+// Base URL should NOT include /api/v1 - router handles that
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost/wrightcommerce/public';
 
 // Create axios instance
 const api = axios.create({
@@ -13,7 +14,6 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Send cookies with requests (for PHP sessions)
 });
 
 // Request interceptor - Add auth token if available
