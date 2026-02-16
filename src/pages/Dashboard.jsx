@@ -1,6 +1,6 @@
 /**
- * Dashboard Page
- * Admin overview with stats
+ * Dashboard Page - DEBUG VERSION
+ * Logs all API responses to help diagnose auth issues
  */
 
 import React, { useState, useEffect } from 'react';
@@ -13,10 +13,14 @@ import {
   FiTrendingUp,
   FiAlertCircle
 } from 'react-icons/fi';
-import api from '../services/api';
 import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
+import productService from '../services/productService';
+import orderService from '../services/orderService';
+import customerService from '../services/customerService';
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalOrders: 0,
@@ -27,31 +31,67 @@ const Dashboard = () => {
   });
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    console.log('Dashboard mounting, user:', user);
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Fetch stats
-      const [productsRes, ordersRes, customersRes] = await Promise.all([
-        api.get('/products?limit=1'),
-        api.get('/orders?limit=5'),
-        api.get('/customers?limit=1'),
-      ]); 
+      console.log('Fetching dashboard data...');
 
-      // Calculate stats
-      const totalProducts = productsRes.data.data.total || 0;
-      const orders = ordersRes.data.data.data || [];
-      const totalOrders = ordersRes.data.data.total || 0;
-      const totalCustomers = customersRes.data.data.total || 0;
+      // Fetch products
+      console.log('Fetching products...');
+      let productsRes;
+      try {
+        productsRes = await productService.getAll({ limit: 1 });
+        console.log('Products response:', productsRes);
+      } catch (err) {
+        console.error('Products error:', err);
+        productsRes = { data: [], total: 0 };
+      }
 
-      // Calculate revenue from recent orders
-      const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
-      const pendingOrders = orders.filter(o => o.status === 'pending').length;
+      // Fetch orders
+      console.log('Fetching orders...');
+      let ordersRes;
+      try {
+        ordersRes = await orderService.getAll({});
+        console.log('Orders response:', ordersRes);
+      } catch (err) {
+        console.error('Orders error:', err);
+        ordersRes = { data: [], total: 0 };
+      }
+
+      // Fetch customers
+      console.log('Fetching customers...');
+      let customersRes;
+      try {
+        customersRes = await customerService.getAll({ limit: 1 });
+        console.log('Customers response:', customersRes);
+      } catch (err) {
+        console.error('Customers error:', err);
+        customersRes = { data: [], total: 0 };
+      }
+
+      // Extract data safely
+      const totalProducts = productsRes.data?.total || productsRes.data.pagination?.total || 0;
+      const totalOrders = ordersRes.data?.total || ordersRes.data.pagination?.total || 0;
+      const totalCustomers = customersRes.data?.total || customersRes.data.pagination?.total || 0;
+      
+      const orders = ordersRes.data || ordersRes.data?.items || [];
+      console.log('Extracted orders:', orders);
+
+      // Calculate revenue
+      const totalRevenue = orders.items.reduce((sum, order) => {
+        return sum + parseFloat(order.total || 0);
+      }, 0);
+      
+      const pendingOrders = orders.items.filter(o => o.status === 'pending').length;
 
       setStats({
         totalProducts,
@@ -59,12 +99,15 @@ const Dashboard = () => {
         totalCustomers,
         totalRevenue,
         pendingOrders,
-        lowStockProducts: 0, // Will implement later
+        lowStockProducts: 0,
       });
 
-      setRecentOrders(orders.slice(0, 5));
+      setRecentOrders(orders.items.slice(0, 5));
+      
+      console.log('Dashboard data loaded successfully');
     } catch (error) {
       console.error('Dashboard error:', error);
+      setError(error.message || 'Failed to load dashboard data');
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
@@ -104,8 +147,24 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+      <div className="flex flex-col items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mb-4"></div>
+        <p className="text-gray-600">Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <p className="text-red-800 font-semibold">Error loading dashboard</p>
+        <p className="text-red-600 text-sm mt-2">{error}</p>
+        <button 
+          onClick={fetchDashboardData}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -115,7 +174,7 @@ const Dashboard = () => {
       {/* Page Title */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome back! Here's what's happening with your store.</p>
+        <p className="text-gray-600 mt-2">Welcome back, <strong>{user?.name}</strong>! Here's what's happening with your store.</p>
       </div>
 
       {/* Stats Grid */}
@@ -144,7 +203,6 @@ const Dashboard = () => {
 
       {/* Quick Actions & Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Pending Orders */}
         {stats.pendingOrders > 0 && (
           <Link
             to="/orders?status=pending"
@@ -160,23 +218,6 @@ const Dashboard = () => {
           </Link>
         )}
 
-        {/* Low Stock */}
-        {stats.lowStockProducts > 0 && (
-          <Link
-            to="/products?stock=low"
-            className="bg-red-50 border border-red-200 rounded-lg p-6 hover:bg-red-100 transition-colors"
-          >
-            <div className="flex items-center">
-              <FiAlertCircle className="w-6 h-6 text-red-600 mr-3" />
-              <div>
-                <p className="font-semibold text-red-800">{stats.lowStockProducts} Low Stock Items</p>
-                <p className="text-sm text-red-700">Restock needed</p>
-              </div>
-            </div>
-          </Link>
-        )}
-
-        {/* Growth */}
         <div className="bg-green-50 border border-green-200 rounded-lg p-6">
           <div className="flex items-center">
             <FiTrendingUp className="w-6 h-6 text-green-600 mr-3" />
@@ -203,6 +244,7 @@ const Dashboard = () => {
           <div className="p-8 text-center text-gray-500">
             <FiShoppingCart className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <p>No orders yet</p>
+            <p className="text-sm mt-2">Orders will appear here once customers start purchasing</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -229,7 +271,7 @@ const Dashboard = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="font-semibold text-gray-800">
-                        KES {parseFloat(order.total).toLocaleString()}
+                        KES {parseFloat(order.total || 0).toLocaleString()}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

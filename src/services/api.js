@@ -1,6 +1,7 @@
 /**
  * API Service
  * Axios instance with interceptors for authentication
+ * WITH SESSION SUPPORT
  */
 
 import axios from 'axios';
@@ -14,11 +15,13 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // IMPORTANT: Send cookies with requests for session auth
 });
 
-// Request interceptor - Add auth token if available
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
+    // Session is handled by cookies, but we can still add token if needed
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -30,34 +33,32 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handle errors globally
+// Response interceptor
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
     if (error.response) {
-      // Server responded with error
       const { status } = error.response;
 
       if (status === 401) {
-        // Unauthorized - redirect to login
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        // Only redirect if not already on login page
+        if (window.location.pathname !== '/login') {
+          console.log('Unauthorized - redirecting to login');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
       }
 
       if (status === 403) {
-        // Forbidden
         console.error('Access forbidden');
       }
 
       if (status >= 500) {
-        // Server error
         console.error('Server error occurred');
       }
     } else if (error.request) {
-      // Request made but no response
       console.error('Network error - no response from server');
     }
 
