@@ -267,7 +267,7 @@ const Dashboard = () => {
                       </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {order.customer_name || 'N/A'}
+                      {order.customer?.name || order.customer_name || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="font-semibold text-gray-800">

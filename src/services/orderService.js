@@ -72,6 +72,21 @@ const orderService = {
   },
 
   /**
+   * Search orders
+   * GET /api/v1/orders/search
+   */
+  async search(query) {
+    try {
+      const response = await api.get('/api/v1/orders/search', {
+        params: { q: query }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data?.message || 'Failed to search orders';
+    }
+  },
+
+  /**
    * Get order stats
    * GET /api/v1/orders/stats
    */

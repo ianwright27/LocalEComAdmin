@@ -1,6 +1,7 @@
 /**
  * Product Service
  * API calls for product management
+ * WITH FILE UPLOAD SUPPORT
  */
 
 import api from './api';
@@ -33,12 +34,16 @@ const productService = {
   },
 
   /**
-   * Create product
+   * Create product (with file upload)
    * POST /api/v1/products
    */
   async create(productData) {
     try {
-      const response = await api.post('/api/v1/products', productData);
+      const response = await api.post('/api/v1/products', productData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to create product';
@@ -46,12 +51,16 @@ const productService = {
   },
 
   /**
-   * Update product
+   * Update product (with file upload)
    * PUT /api/v1/products/:id
    */
   async update(id, productData) {
     try {
-      const response = await api.put(`/api/v1/products/${id}`, productData);
+      const response = await api.post(`/api/v1/products/${id}`, productData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || 'Failed to update product';
