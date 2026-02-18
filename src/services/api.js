@@ -1,67 +1,55 @@
 /**
- * API Service
- * Axios instance with interceptors for authentication
- * WITH SESSION SUPPORT
+ * API Configuration
+ * CORS FIX: Uses POST with _method for PUT/PATCH/DELETE
  */
 
 import axios from 'axios';
 
-// Base URL should NOT include /api/v1 - router handles that
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost/wrightcommerce/public';
-
-// Create axios instance
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost/wrightcommerce/public',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // IMPORTANT: Send cookies with requests for session auth
 });
 
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    // Session is handled by cookies, but we can still add token if needed
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+// ✅ CORS FIX: Intercept PUT/PATCH/DELETE and convert to POST
+api.interceptors.request.use((config) => {
+  // If method is PUT, PATCH, or DELETE, convert to POST with _method
+  if (['put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+    const originalMethod = config.method.toUpperCase();
+    
+    // Convert to POST
+    config.method = 'post';
+    
+    // Add _method to data
+    if (config.data instanceof FormData) {
+      // For FormData (like file uploads)
+      config.data.append('_method', originalMethod);
+    } else {
+      // For JSON data
+      config.data = {
+        ...config.data,
+        _method: originalMethod,
+      };
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
   }
-);
+  
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 
 // Response interceptor
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
-    if (error.response) {
-      const { status } = error.response;
-
-      if (status === 401) {
-        // Only redirect if not already on login page
-        if (window.location.pathname !== '/login') {
-          console.log('Unauthorized - redirecting to login');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-        }
-      }
-
-      if (status === 403) {
-        console.error('Access forbidden');
-      }
-
-      if (status >= 500) {
-        console.error('Server error occurred');
-      }
-    } else if (error.request) {
-      console.error('Network error - no response from server');
+    if (error.response?.status === 401) {
+      localStorage.removeItem('user');
+      window.location.href = '/login';
     }
-
+    
+    console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );

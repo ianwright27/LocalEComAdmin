@@ -1,6 +1,7 @@
 /**
- * App.jsx 
- * WITH CUSTOMER ROUTES
+ * App.jsx - FINAL COMPLETE 
+ * WrightCommerce Admin Dashboard
+ * All routes wired up: Dashboard, Products, Orders, Customers, Payments, Settings
  */
 
 import React from 'react';
@@ -12,11 +13,11 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminLayout from './components/layout/AdminLayout';
 
-// Auth Pages
+// Auth
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 
-// Admin Pages
+// Pages
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import AddProduct from './pages/AddProduct';
@@ -25,17 +26,13 @@ import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
 import Customers from './pages/Customers';
 import CustomerDetails from './pages/CustomerDetails';
+import Payments from './pages/Payments';
+import Settings from './pages/Settings';
 
-// Placeholder pages
-const Payments = () => <div className="p-8"><h1 className="text-2xl font-bold">Payments - Coming Soon</h1></div>;
-const Notifications = () => <div className="p-8"><h1 className="text-2xl font-bold">Notifications - Coming Soon</h1></div>;
-const Settings = () => <div className="p-8"><h1 className="text-2xl font-bold">Settings - Coming Soon</h1></div>;
-
-const wrap = (Component) => (
+// Wrap a page in ProtectedRoute + AdminLayout
+const Page = ({ children }) => (
   <ProtectedRoute>
-    <AdminLayout>
-      <Component />
-    </AdminLayout>
+    <AdminLayout>{children}</AdminLayout>
   </ProtectedRoute>
 );
 
@@ -43,46 +40,53 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ToastContainer position="top-right" autoClose={3000} newestOnTop closeOnClick pauseOnHover />
-        
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+        />
+
         <Routes>
-          {/* Public */}
+          {/* ── Public ── */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Dashboard */}
-          <Route path="/dashboard" element={wrap(Dashboard)} />
+          {/* ── Dashboard ── */}
+          <Route path="/dashboard" element={<Page><Dashboard /></Page>} />
 
-          {/* Products */}
-          <Route path="/products" element={wrap(Products)} />
-          <Route path="/products/add" element={wrap(AddProduct)} />
-          <Route path="/products/edit/:id" element={wrap(EditProduct)} />
+          {/* ── Products ── */}
+          <Route path="/products" element={<Page><Products /></Page>} />
+          <Route path="/products/add" element={<Page><AddProduct /></Page>} />
+          <Route path="/products/edit/:id" element={<Page><EditProduct /></Page>} />
 
-          {/* Orders */}
-          <Route path="/orders" element={wrap(Orders)} />
-          <Route path="/orders/:id" element={wrap(OrderDetails)} />
+          {/* ── Orders ── */}
+          <Route path="/orders" element={<Page><Orders /></Page>} />
+          <Route path="/orders/:id" element={<Page><OrderDetails /></Page>} />
 
-          {/* Customers */}
-          <Route path="/customers" element={wrap(Customers)} />
-          <Route path="/customers/:id" element={wrap(CustomerDetails)} />
+          {/* ── Customers ── */}
+          <Route path="/customers" element={<Page><Customers /></Page>} />
+          <Route path="/customers/:id" element={<Page><CustomerDetails /></Page>} />
 
-          {/* Payments */}
-          <Route path="/payments" element={wrap(Payments)} />
+          {/* ── Payments ── */}
+          <Route path="/payments" element={<Page><Payments /></Page>} />
 
-          {/* Notifications */}
-          <Route path="/notifications" element={wrap(Notifications)} />
+          {/* ── Settings ── */}
+          <Route path="/settings" element={<Page><Settings /></Page>} />
 
-          {/* Settings */}
-          <Route path="/settings" element={wrap(Settings)} />
-
-          {/* Redirects */}
+          {/* ── Redirects ── */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
               <div className="text-center">
                 <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
                 <p className="text-xl text-gray-600 mb-8">Page Not Found</p>
-                <a href="/dashboard" className="px-6 py-3 bg-brand-accent text-white rounded-lg hover:bg-orange-600">
+                <a
+                  href="/dashboard"
+                  className="px-6 py-3 bg-brand-accent text-white rounded-lg hover:bg-orange-600"
+                >
                   Go to Dashboard
                 </a>
               </div>

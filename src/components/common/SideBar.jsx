@@ -28,7 +28,7 @@ const SideBar = () => {
     { path: '/orders', icon: FiShoppingCart, label: 'Orders' },
     { path: '/customers', icon: FiUsers, label: 'Customers' },
     { path: '/payments', icon: FiDollarSign, label: 'Payments' },
-    { path: '/notifications', icon: FiBell, label: 'Notifications' },
+    // { path: '/notifications', icon: FiBell, label: 'Notifications' },
     { path: '/settings', icon: FiSettings, label: 'Settings' },
   ];
 

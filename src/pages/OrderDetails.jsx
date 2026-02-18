@@ -158,9 +158,9 @@ const OrderDetails = () => {
                   <div key={index} className="flex items-center justify-between pb-4 border-b last:border-b-0">
                     <div className="flex items-center flex-1">
                       <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
-                        {item.image ? (
+                        {item.product_image ? (
                           <img
-                            src={`http://localhost/wrightcommerce/public/uploads/${item.image}`}
+                            src={`http://localhost/wrightcommerce/public/uploads/${item.product_image}`}
                             alt={item.product_name}
                             className="w-16 h-16 object-cover rounded"
                           />
@@ -230,9 +230,9 @@ const OrderDetails = () => {
             <div className="flex items-start">
               <FiMapPin className="text-gray-400 mt-1 mr-3" size={16} />
               <div>
-                <p className="text-sm text-gray-600">
-                  {order.shipping_address || 'No shipping address provided'}
-                </p>
+                  <p className="text-sm text-gray-600">
+                    {order.shipping_address || `Only note available: ${order.notes}` || 'No shipping address provided'}
+                  </p>
               </div>
             </div>
           </div>
