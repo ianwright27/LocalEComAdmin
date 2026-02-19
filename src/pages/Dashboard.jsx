@@ -1,6 +1,7 @@
 /**
- * Dashboard Page - DEBUG VERSION
- * Logs all API responses to help diagnose auth issues
+ * Dashboard - POLISHED VERSION
+ * Smart greeting for first-time vs returning users
+ * Hides motivational messages when no data
  */
 
 import React, { useState, useEffect } from 'react';
@@ -13,14 +14,10 @@ import {
   FiTrendingUp,
   FiAlertCircle
 } from 'react-icons/fi';
+import api from '../services/api';
 import { toast } from 'react-toastify';
-import { useAuth } from '../context/AuthContext';
-import productService from '../services/productService';
-import orderService from '../services/orderService';
-import customerService from '../services/customerService';
 
 const Dashboard = () => {
-  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalOrders: 0,
@@ -31,67 +28,45 @@ const Dashboard = () => {
   });
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+  const [isFirstTime, setIsFirstTime] = useState(false);
 
   useEffect(() => {
-    console.log('Dashboard mounting, user:', user);
+    // Get user from localStorage
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    setUser(userData);
+    
+    // Check if first time (no previous login timestamp)
+    const lastLogin = localStorage.getItem('lastLoginTime');
+    const currentTime = Date.now();
+    
+    if (!lastLogin) {
+      setIsFirstTime(true);
+    }
+    
+    // Update login timestamp
+    localStorage.setItem('lastLoginTime', currentTime.toString());
+    
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      setError(null);
       
-      console.log('Fetching dashboard data...');
+      const [productsRes, ordersRes, customersRes] = await Promise.all([
+        api.get('/api/v1/products?per_page=1'),
+        api.get('/api/v1/orders?per_page=5'),
+        api.get('/api/v1/customers?per_page=1'),
+      ]);
 
-      // Fetch products
-      console.log('Fetching products...');
-      let productsRes;
-      try {
-        productsRes = await productService.getAll({ limit: 1 });
-        console.log('Products response:', productsRes);
-      } catch (err) {
-        console.error('Products error:', err);
-        productsRes = { data: [], total: 0 };
-      }
+      const totalProducts = productsRes.data?.data?.pagination?.total || 0;
+      const orders = ordersRes.data?.data?.items || [];
+      const totalOrders = ordersRes.data?.data?.pagination?.total || 0;
+      const totalCustomers = customersRes.data?.data?.pagination?.total || 0;
 
-      // Fetch orders
-      console.log('Fetching orders...');
-      let ordersRes;
-      try {
-        ordersRes = await orderService.getAll({});
-        console.log('Orders response:', ordersRes);
-      } catch (err) {
-        console.error('Orders error:', err);
-        ordersRes = { data: [], total: 0 };
-      }
-
-      // Fetch customers
-      console.log('Fetching customers...');
-      let customersRes;
-      try {
-        customersRes = await customerService.getAll({ limit: 1 });
-        console.log('Customers response:', customersRes);
-      } catch (err) {
-        console.error('Customers error:', err);
-        customersRes = { data: [], total: 0 };
-      }
-
-      // Extract data safely
-      const totalProducts = productsRes.data?.total || productsRes.data.pagination?.total || 0;
-      const totalOrders = ordersRes.data?.total || ordersRes.data.pagination?.total || 0;
-      const totalCustomers = customersRes.data?.total || customersRes.data.pagination?.total || 0;
-      
-      const orders = ordersRes.data || ordersRes.data?.items || [];
-      console.log('Extracted orders:', orders);
-
-      // Calculate revenue
-      const totalRevenue = orders.items.reduce((sum, order) => {
-        return sum + parseFloat(order.total || 0);
-      }, 0);
-      
-      const pendingOrders = orders.items.filter(o => o.status === 'pending').length;
+      const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
+      const pendingOrders = orders.filter(o => o.status === 'pending').length;
 
       setStats({
         totalProducts,
@@ -102,17 +77,16 @@ const Dashboard = () => {
         lowStockProducts: 0,
       });
 
-      setRecentOrders(orders.items.slice(0, 5));
-      
-      console.log('Dashboard data loaded successfully');
+      setRecentOrders(orders.slice(0, 5));
     } catch (error) {
       console.error('Dashboard error:', error);
-      setError(error.message || 'Failed to load dashboard data');
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
+
+  const hasAnyData = stats.totalOrders > 0 || stats.totalRevenue > 0;
 
   const statCards = [
     {
@@ -145,55 +119,56 @@ const Dashboard = () => {
     },
   ];
 
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      processing: 'bg-blue-100 text-blue-800',
+      shipped: 'bg-purple-100 text-purple-800',
+      completed: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mb-4"></div>
-        <p className="text-gray-600">Loading dashboard...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <p className="text-red-800 font-semibold">Error loading dashboard</p>
-        <p className="text-red-600 text-sm mt-2">{error}</p>
-        <button 
-          onClick={fetchDashboardData}
-          className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-        >
-          Retry
-        </button>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Page Title */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome back, <strong>{user?.name}</strong>! Here's what's happening with your store.</p>
+    <div className="space-y-6">
+      {/* Header with Smart Greeting */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">
+          {isFirstTime ? 'Hello there' : 'Welcome back'}, {user?.name || 'Admin'}!
+        </h1>
+        <p className="text-sm text-gray-600 mt-1">
+          {isFirstTime 
+            ? "Let's get your business set up and running" 
+            : "Here's what's happening with your business today"}
+        </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card) => {
+          const Icon = card.icon;
           return (
             <Link
-              key={index}
-              to={stat.link}
+              key={card.title}
+              to={card.link}
               className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm mb-1">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
+                  <p className="text-sm text-gray-600">{card.title}</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
                 </div>
-                <div className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
-                  <Icon className="w-6 h-6 text-white" />
+                <div className={`${card.color} p-3 rounded-lg`}>
+                  <Icon className="text-white" size={24} />
                 </div>
               </div>
             </Link>
@@ -201,88 +176,90 @@ const Dashboard = () => {
         })}
       </div>
 
-      {/* Quick Actions & Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {stats.pendingOrders > 0 && (
-          <Link
-            to="/orders?status=pending"
-            className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 hover:bg-yellow-100 transition-colors"
-          >
-            <div className="flex items-center">
-              <FiAlertCircle className="w-6 h-6 text-yellow-600 mr-3" />
-              <div>
-                <p className="font-semibold text-yellow-800">{stats.pendingOrders} Pending Orders</p>
-                <p className="text-sm text-yellow-700">Need your attention</p>
-              </div>
-            </div>
-          </Link>
-        )}
-
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+      {/* Conditional Motivational Message - Only if data exists */}
+      {hasAnyData && (
+        <div className="bg-gradient-to-r from-brand-primary to-brand-accent rounded-lg shadow-md p-6 text-white">
           <div className="flex items-center">
-            <FiTrendingUp className="w-6 h-6 text-green-600 mr-3" />
+            <FiTrendingUp size={32} className="mr-4" />
             <div>
-              <p className="font-semibold text-green-800">Growing Strong</p>
-              <p className="text-sm text-green-700">Keep up the good work!</p>
+              <h3 className="text-lg font-semibold">Growing Strong!</h3>
+              <p className="text-sm opacity-90">
+                {stats.totalOrders} orders and KES {stats.totalRevenue.toLocaleString()} in revenue. Keep up the great work!
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Quick Actions */}
+      {stats.pendingOrders > 0 && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+          <div className="flex items-center">
+            <FiAlertCircle className="text-yellow-600 mr-3" size={20} />
+            <div>
+              <p className="text-sm font-medium text-yellow-800">
+                You have {stats.pendingOrders} pending order{stats.pendingOrders > 1 ? 's' : ''}
+              </p>
+              <Link to="/orders?status=pending" className="text-sm text-yellow-700 hover:underline">
+                View pending orders →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent Orders */}
       <div className="bg-white rounded-lg shadow-md">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-800">Recent Orders</h2>
-            <Link to="/orders" className="text-brand-accent hover:underline text-sm font-medium">
-              View All →
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800">Recent Orders</h2>
+          {/* Only show View All if orders exist */}
+          {stats.totalOrders > 0 && (
+            <Link to="/orders" className="text-sm text-brand-accent hover:underline">
+              View All
             </Link>
-          </div>
+          )}
         </div>
-        
-        {recentOrders.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <FiShoppingCart className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>No orders yet</p>
-            <p className="text-sm mt-2">Orders will appear here once customers start purchasing</p>
-          </div>
-        ) : (
+
+        {recentOrders.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order #</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Order
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Total
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Date
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {recentOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Link to={`/orders/${order.id}`} className="text-brand-accent hover:underline font-medium">
+                      <Link to={`/orders/${order.id}`} className="text-sm font-medium text-brand-accent hover:underline">
                         {order.order_number}
                       </Link>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {order.customer?.name || order.customer_name || 'N/A'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {order.customer_name || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-semibold text-gray-800">
-                        KES {parseFloat(order.total || 0).toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
                         {order.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                      KES {parseFloat(order.total).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {new Date(order.created_at).toLocaleDateString()}
@@ -291,6 +268,14 @@ const Dashboard = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        ) : (
+          <div className="p-12 text-center">
+            <FiShoppingCart className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-600">No orders yet</p>
+            <p className="text-sm text-gray-400 mt-2">
+              Orders will appear here once customers start purchasing
+            </p>
           </div>
         )}
       </div>
