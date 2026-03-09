@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://wrightcommerce.infinityfreeapp.com/public/api/:path*"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "https://wrightcommerce.infinityfreeapp.com/public/auth/:path*"
+    },
+    {
+      "source": "/webhooks/:path*",
+      "destination": "https://wrightcommerce.infinityfreeapp.com/public/webhooks/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
